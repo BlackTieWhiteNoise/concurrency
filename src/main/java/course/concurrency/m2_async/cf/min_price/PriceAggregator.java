@@ -1,7 +1,14 @@
 package course.concurrency.m2_async.cf.min_price;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+import static java.util.stream.Collectors.toList;
 
 public class PriceAggregator {
 
@@ -18,24 +25,20 @@ public class PriceAggregator {
     }
 
     public double getMinPrice(long itemId) {
-        // place for your code
-        // 1. create a collection of CompletableFuture<Double>
-        // 2. for each shopId create CompletableFuture<Double> and add it to the collection
-        // 3. use CompletableFuture.allOf() to wait for all futures to complete
-        // 4. use CompletableFuture.join() to get the result of each future
-        // 5. find the minimum price
-        // 6. return the minimum price
-        //
-        // Note: you can use the following code to retrieve the price from the shop
-        // CompletableFuture<Double> future = priceRetriever.retrievePrice(shopId, itemId);
-        // Double price = future.join();
-        // Note: you can use the following code to find the minimum price
-        // double minPrice = prices.stream().min(Double::compare).get();
-        // Note: you can use the following code to convert a collection of CompletableFuture<Double> to CompletableFuture<Void>
-        // CompletableFuture<Void> allFutures = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
-        // Note: you can use the following code to wait for all futures to complete
-        // allFutures.join();
+        ExecutorService executor = Executors.newCachedThreadPool();
 
-        return 0;
+            List<CompletableFuture<Double>> futures = shopIds
+                    .stream()
+                    .map(shopId -> CompletableFuture.supplyAsync(() -> priceRetriever.getPrice(shopId, itemId), executor)
+                    .completeOnTimeout(Double.NaN, 2950, TimeUnit.MILLISECONDS)
+                    .exceptionally(exception -> Double.NaN))
+                    .collect(toList());
+
+
+        return futures.stream()
+                .mapToDouble(CompletableFuture::join)
+                .filter(price -> !Double.isNaN(price))
+                .min()
+                .orElse(Double.NaN);
     }
 }
