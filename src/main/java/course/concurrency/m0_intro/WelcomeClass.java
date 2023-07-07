@@ -7,4 +7,5 @@ public class WelcomeClass {
     public String getMessage() {
         return message;
     }
+
 }
